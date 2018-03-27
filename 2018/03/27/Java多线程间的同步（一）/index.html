@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<!-- Head tag -->
+<head>
+
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <!--Description-->
+    
+        <meta name="description" content="日常开发中往往会遇到多个线程循环操作某个对象中的某个方法或者间接处理某个对象，如果当前某个对象被多个线程同时操作的话，势必会造成同步的问题，即线程A操作了对象object从而改变了该object的值，此刻线程A获取到的object的值还是之前的值。那么类似这种情况下，我们通常就要用如下几种方式去解决">
+    
+
+    <!--Author-->
+    
+        <meta name="author" content="Alex Jerry">
+    
+
+    <!--Open Graph Title-->
+    
+        <meta property="og:title" content="Java多线程间的同步（一）"/>
+    
+
+    <!--Open Graph Description-->
+    
+
+    <!--Open Graph Site Name-->
+    <meta property="og:site_name" content=""/>
+
+    <!--Type page-->
+    
+        <meta property="og:type" content="article" />
+    
+
+    <!--Page Cover-->
+    
+
+        <meta name="twitter:card" content="summary" />
+    
+
+    <!-- Title -->
+    
+    <title>Java多线程间的同步（一） - </title>
+
+    <!-- Bootstrap Core CSS -->
+    <link href="//maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css" rel="stylesheet"/>
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/css/style.css">
+
+    <!-- Custom Fonts -->
+    <link href="//maxcdn.bootstrapcdn.com/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet" type="text/css">
+    <link href="//fonts.googleapis.com/css?family=Lora:400,700,400italic,700italic" rel="stylesheet" type="text/css">
+    <link href="//fonts.googleapis.com/css?family=Open+Sans:300italic,400italic,600italic,700italic,800italic,400,300,600,700,800" rel="stylesheet" type="text/css">
+
+    <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
+    <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+    <!--[if lt IE 9]>
+    <script src="//oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+    <script src="//oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
+    <![endif]-->
+
+    <!-- Gallery -->
+    <link href="//cdnjs.cloudflare.com/ajax/libs/featherlight/1.3.5/featherlight.min.css" type="text/css" rel="stylesheet" />
+
+    <!-- Google Analytics -->
+    
+
+
+    <!-- favicon -->
+    
+    <link rel="icon" href="篮球、旅游">
+    
+	
+</head>
+
+
+<body>
+
+    <!-- Menu -->
+    <!-- Navigation -->
+<nav class="navbar navbar-default navbar-custom navbar-fixed-top">
+    <div class="container-fluid">
+        <!-- Brand and toggle get grouped for better mobile display -->
+        <div class="navbar-header page-scroll">
+            <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </button>
+            <a class="navbar-brand" href="/">简书</a>
+        </div>
+
+        <!-- Collect the nav links, forms, and other content for toggling -->
+        <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+            <ul class="nav navbar-nav navbar-right">
+                
+                    <li>
+                        <a href="/">
+                            
+                                主页
+                            
+                        </a>
+                    </li>
+                
+                    <li>
+                        <a href="/archives">
+                            
+                                学习
+                            
+                        </a>
+                    </li>
+                
+                    <li>
+                        <a href="/collection">
+                            
+                                收藏
+                            
+                        </a>
+                    </li>
+                
+                    <li>
+                        <a href="/live">
+                            
+                                生活
+                            
+                        </a>
+                    </li>
+                
+                    <li>
+                        <a href="https://github.com/Alex-Jerry/">
+                            
+                                <i class="fa fa-github fa-stack-2x"></i>
+                            
+                        </a>
+                    </li>
+                
+            </ul>
+        </div>
+        <!-- /.navbar-collapse -->
+    </div>
+    <!-- /.container -->
+</nav>
+
+    <!-- Main Content -->
+    <!-- Page Header -->
+<!-- Set your background image for this header in your post front-matter: cover -->
+
+<header class="intro-header" style="background-image: url('http://www.codeblocq.com/assets/projects/hexo-theme-clean-blog/img/home-bg.jpg')">
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+                <div class="post-heading">
+                    <h1>Java多线程间的同步（一）</h1>
+                    
+                    <span class="meta">
+                        <!-- Date and Author -->
+                        
+                        
+                            2018-03-27
+                        
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+</header>
+
+<!-- Post Content -->
+<article>
+    <div class="container">
+        <div class="row">
+
+            <!-- Tags and categories -->
+           
+
+            <!-- Gallery -->
+            
+
+            <!-- Post Main Content -->
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+                <p>日常开发中往往会遇到多个线程循环操作某个对象中的某个方法或者间接处理某个对象，如果当前某个对象被多个线程同时操作的话，势必会造成同步的问题，即线程A操作了对象object从而改变了该object的值，此刻线程A获取到的object的值还是之前的值。那么类似这种情况下，我们通常就要用如下几种方式去解决该问题。</p>
+<h4 id="1、synchronized-关键字"><a href="#1、synchronized-关键字" class="headerlink" title="1、synchronized 关键字"></a>1、synchronized 关键字</h4><h4 id="2、Lock"><a href="#2、Lock" class="headerlink" title="2、Lock"></a>2、Lock</h4><h4 id="3、ReadWriteLock"><a href="#3、ReadWriteLock" class="headerlink" title="3、ReadWriteLock"></a>3、ReadWriteLock</h4><h4 id="4、其他方式"><a href="#4、其他方式" class="headerlink" title="4、其他方式"></a>4、其他方式</h4><p><img src="http://upload-images.jianshu.io/upload_images/3884117-4511fc4c76691177.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/440" alt=""></p>
+<p>###（一）synchronized<br>是java中表示同步代码快的关键字。可以放在方法修饰符前，比如private synchronized void test(){},也可以放在方法内部，修饰某一段特定的代码。synchronized有一个地方需要注意，就是在给普通方法加锁与给静态方法加锁机制是不一样的。synchronized在静态方法上表示调用前要获得类的锁，而在非静态方法上表示调用此方法前要获得对象的锁，synchronized可作用于instance变量、object reference（对象引用）、static函数和class literals(类名称字面常量)身上。。</p>
+<p>如下代码所示：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line">public class SynTest &#123;   </span><br><span class="line">  </span><br><span class="line">private static String a=&quot;a&quot;;   </span><br><span class="line">  </span><br><span class="line">//等同于方法test2</span><br><span class="line">public synchronized void test1(String b)&#123; //调用前要取得SynTest 实例化后对象的锁   </span><br><span class="line">   System.out.println(a+b);   </span><br><span class="line">&#125;   </span><br><span class="line">public void test2(String b)&#123;   </span><br><span class="line">   synchronized (this) &#123;//取得SynTest 实例化后对象的锁   </span><br><span class="line">    System.out.println(a+b);   </span><br><span class="line">   &#125;   </span><br><span class="line">&#125;   </span><br><span class="line">//等同于方法test4</span><br><span class="line">public synchronized static void test3(String b)&#123;//调用前要取得SynTest .class类的锁   </span><br><span class="line">   System.out.println(b+a);   </span><br><span class="line">&#125;   </span><br><span class="line">public static void test4(String b)&#123;   </span><br><span class="line">   synchronized (SynTest .class) &#123; //取得SynTest .class类的锁   </span><br><span class="line">    System.out.println(a+b);   </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h4 id="注意："><a href="#注意：" class="headerlink" title="注意："></a>注意：</h4><p>1、test1和test2中synchronized 锁定的是SynTest的对象即该类的实例化对象，也可认为是object reference（对象引用）， test3和test4中synchronized 锁定的是SynTest对象所属的类（Class，而不再是由这个Class产生的某个具体对象了），SynTest.class和synTest.getClass作用于同步锁是不一样的,不能用synTest.getClass()来达到锁这个Class的目的。synTest指的是由SynTest类产生的对象。</p>
+<p>2、对synchronized(this)的一些理解<br>一、当两个并发线程访问同一个对象object中的这个synchronized(this)同步代码块时，一个时间内只能有一个线程得到执行。另一个线程必须等待当前线程执行完这个代码块以后才能执行该代码块。  </p>
+<p>二、然而，当一个线程访问object的一个synchronized(this)同步代码块时，另一个线程仍然可以访问该object中的非synchronized(this)同步代码块。  </p>
+<p>三、尤其关键的是，当一个线程访问object的一个synchronized(this)同步代码块时，其他线程对object中所有其它synchronized(this)同步代码块的访问将被阻塞。  </p>
+<p>四、当一个线程访问object的一个synchronized(this)同步代码块时，它就获得了这个object的对象锁。结果，其它线程对该object对象所有同步代码部分的访问都被暂时阻塞。</p>
+<p>3、synchronized 方法的缺陷：若将一个大的方法声明为synchronized 将会大大影响效率，典型地，若将线程类的方法 run() 声明为synchronized ，由于在线程的整个生命期内它一直在运行，因此将导致它对本类任何 synchronized 方法的调用都永远不会成功。当然我们可以通过将访问类成员变量的代码放到专门的方法中，将其声明为synchronized ，并在主方法中调用来解决这一问题，但是 Java 为我们提供了更好的解决办法，那就是 synchronized 块。</p>
+<p>4、synchronized 块：通过 synchronized关键字来声明synchronized 块。语法如下：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">synchronized(syncObject) &#123;  </span><br><span class="line">  //允许访问控制的代码  </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>synchronized 块是这样一个代码块，其中的代码必须获得对象 syncObject （如前所述，可以是类实例或类）的锁方能执行，具体机制同前所述。由于可以针对任意代码块，且可任意指定上锁的对象，故灵活性较高。</p>
+<p>5、如果只是想单纯的锁某段代码块，当有明确的对象作为锁是可以的，如果没有明确的对象作为锁，则可以创建一个特殊的变量。如下：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">class Foo implements Runnable</span><br><span class="line">&#123;</span><br><span class="line">        private byte[] lock = new byte[0]; // 特殊的instance变量</span><br><span class="line">        Public void methodA() </span><br><span class="line">        &#123;</span><br><span class="line">           synchronized(lock) &#123; //… &#125;</span><br><span class="line">        &#125;</span><br><span class="line">        //…..</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>注：零长度的byte数组对象创建起来将比任何对象都经济――查看编译后的字节码：生成零长度的byte[]对象只需3条操作码，而Object lock = new Object()则需要7行操作码。</p>
+<p>###（二）Lock<br>是java.util.concurrent.locks包下的接口，Lock实现提供了比使用synchronized方法和语句可获得的更广泛的锁定操作，因为Lock可以锁定任意一段代码<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><span class="line">public class LockTest &#123;  </span><br><span class="line">    public static void main(String[] args) &#123;  </span><br><span class="line">        final Outputter output = new Outputter();  </span><br><span class="line">        new Thread() &#123;  </span><br><span class="line">            public void run() &#123;  </span><br><span class="line">                output.output(&quot;Alex-Jerry&quot;);  </span><br><span class="line">            &#125;;  </span><br><span class="line">        &#125;.start();        </span><br><span class="line">        new Thread() &#123;  </span><br><span class="line">            public void run() &#123;  </span><br><span class="line">                output.output(&quot;AI-Curry&quot;);  </span><br><span class="line">            &#125;;  </span><br><span class="line">        &#125;.start();  </span><br><span class="line">    &#125;  </span><br><span class="line">&#125;  </span><br><span class="line">class Outputter &#123;  </span><br><span class="line">    private Lock lock = new ReentrantLock();// 锁对象  </span><br><span class="line">    public void output(String name) &#123;  </span><br><span class="line">        // TODO 线程输出方法  </span><br><span class="line">        lock.lock();// 得到锁  </span><br><span class="line">        try &#123;  </span><br><span class="line">            for(int i = 0; i &lt; name.length(); i++) &#123;  </span><br><span class="line">                System.out.print(name.charAt(i));  </span><br><span class="line">            &#125;  </span><br><span class="line">        &#125; finally &#123;  </span><br><span class="line">            lock.unlock();// 释放锁  </span><br><span class="line">        &#125;  </span><br><span class="line">    &#125;  </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>这样就实现了和sychronized一样的同步效果，需要注意的是，用sychronized修饰的方法或者语句块在代码执行完之后锁自动释放，而用Lock需要我们手动释放锁，所以为了保证锁最终被释放(发生异常情况)，要把互斥区放在try内，释放锁放在finally内。</p>
+<h3 id="三-ReadWriteLock"><a href="#三-ReadWriteLock" class="headerlink" title="(三)ReadWriteLock"></a>(三)ReadWriteLock</h3><p>前两种方式虽然解决了读和写、写和写之间的互斥，但是读和读之间同样也是互斥的（不同得到线程可以同步执行读取），严重影响了效率，这个时候就该ReadWriteLock出场了。<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br></pre></td><td class="code"><pre><span class="line">class RWLock&#123;      </span><br><span class="line">    private int data;// 共享数据  </span><br><span class="line">    private ReadWriteLock rwl = new ReentrantReadWriteLock();     </span><br><span class="line">    public void set(int data) &#123;  </span><br><span class="line">        rwl.writeLock().lock();// 取到写锁  </span><br><span class="line">        try &#123;  </span><br><span class="line">            System.out.println(Thread.currentThread().getName() + &quot;准备写入数据&quot;);  </span><br><span class="line">            try &#123;  </span><br><span class="line">                Thread.sleep(20);  </span><br><span class="line">            &#125; catch (InterruptedException e) &#123;  </span><br><span class="line">                e.printStackTrace();  </span><br><span class="line">            &#125;  </span><br><span class="line">            this.data = data;  </span><br><span class="line">            System.out.println(Thread.currentThread().getName() + &quot;写入&quot; + this.data);  </span><br><span class="line">        &#125; finally &#123;  </span><br><span class="line">            rwl.writeLock().unlock();// 释放写锁  </span><br><span class="line">        &#125;  </span><br><span class="line">    &#125;     </span><br><span class="line">    public void get() &#123;  </span><br><span class="line">        rwl.readLock().lock();// 取到读锁  </span><br><span class="line">        try &#123;  </span><br><span class="line">            System.out.println(Thread.currentThread().getName() + &quot;准备读取数据&quot;);  </span><br><span class="line">            try &#123;  </span><br><span class="line">                Thread.sleep(20);  </span><br><span class="line">            &#125; catch (InterruptedException e) &#123;  </span><br><span class="line">                e.printStackTrace();  </span><br><span class="line">            &#125;  </span><br><span class="line">            System.out.println(Thread.currentThread().getName() + &quot;读取&quot; + this.data);  </span><br><span class="line">        &#125; finally &#123;  </span><br><span class="line">            rwl.readLock().unlock();// 释放读锁  </span><br><span class="line">        &#125;  </span><br><span class="line">    &#125;  </span><br><span class="line">&#125;  </span><br><span class="line"></span><br><span class="line">测试：</span><br><span class="line">public class ReadWriteLockTest &#123;  </span><br><span class="line">    public static void main(String[] args) &#123;  </span><br><span class="line">        final RWLock data = new RWLock();  </span><br><span class="line">        for (int i = 0; i &lt; 3; i++) &#123;  </span><br><span class="line">            new Thread(new Runnable() &#123;  </span><br><span class="line">                public void run() &#123;  </span><br><span class="line">                    for (int j = 0; j &lt; 5; j++) &#123;  </span><br><span class="line">                        data.set(new Random().nextInt(30));  </span><br><span class="line">                    &#125;  </span><br><span class="line">                &#125;  </span><br><span class="line">            &#125;).start();  </span><br><span class="line">        &#125;         </span><br><span class="line">        for (int i = 0; i &lt; 3; i++) &#123;  </span><br><span class="line">            new Thread(new Runnable() &#123;  </span><br><span class="line">                public void run() &#123;  </span><br><span class="line">                    for (int j = 0; j &lt; 5; j++) &#123;  </span><br><span class="line">                        data.get();  </span><br><span class="line">                    &#125;  </span><br><span class="line">                &#125;  </span><br><span class="line">            &#125;).start();  </span><br><span class="line">        &#125;  </span><br><span class="line">    &#125;  </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>部分测试输出结果如下：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">Thread-4准备读取数据  </span><br><span class="line">Thread-3准备读取数据  </span><br><span class="line">Thread-5准备读取数据  </span><br><span class="line">Thread-5读取18  </span><br><span class="line">Thread-4读取18  </span><br><span class="line">Thread-3读取18  </span><br><span class="line">Thread-2准备写入数据  </span><br><span class="line">Thread-2写入6  </span><br><span class="line">Thread-2准备写入数据  </span><br><span class="line">Thread-2写入10  </span><br><span class="line">Thread-1准备写入数据  </span><br><span class="line">Thread-1写入22</span><br></pre></td></tr></table></figure></p>
+<h3 id="四-其他方式"><a href="#四-其他方式" class="headerlink" title="(四)其他方式"></a>(四)其他方式</h3><p>线程同步的问题，最上面说的只是一种问题，往往导致同步问题的原因有多种。如线程A和线程B，线程B要等到线程A执行完毕之后才能进行操作，或者子线程执行结束才能让主线程去操作等等，这种情况下，可解决的方案很多，如：使用FutureTask+Callable代替Runnable去执行异步任务（FutureTask 的 get 方法，能够阻塞主线程，直到子线程初始化完成，才继续执行主线程逻辑），使用handler机制，操作线程的wait、notify、join、yield等等。基于这些情况，下篇文章将会逐个去分析和解决。</p>
+
+
+                
+            </div>
+
+            <!-- Comments -->
+            
+                <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+                    
+
+
+                </div>
+            
+        </div>
+    </div>
+</article>
+
+    <!-- Footer -->
+    <hr />
+
+<!-- Footer -->
+<footer>
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+                <ul class="list-inline text-center">
+                    
+
+                    
+
+                    
+                        <li>
+                            <a href="https://github.com/Alex-Jerry/" target="_blank">
+                                <span class="fa-stack fa-lg">
+                                    <i class="fa fa-circle fa-stack-2x"></i>
+                                    <i class="fa fa-github fa-stack-1x fa-inverse"></i>
+                                </span>
+                            </a>
+                        </li>
+                    
+
+                    
+
+                    
+
+                    
+                </ul>
+                <p class="copyright text-muted">&copy; 2018 Alex Jerry<br></p>
+                <p class="copyright text-muted">Original Theme <a target="_blank" href="http://startbootstrap.com/template-overviews/clean-blog/">Clean Blog</a> from <a href="http://startbootstrap.com/" target="_blank">Start Bootstrap</a></p>
+                <p class="copyright text-muted">Adapted for <a target="_blank" href="https://hexo.io/">Hexo</a> by <a href="http://www.codeblocq.com/" target="_blank">Jonathan Klughertz</a></p>
+            </div>
+        </div>
+    </div>
+</footer>
+
+
+    <!-- After footer scripts -->
+    
+<!-- jQuery -->
+<script src="//code.jquery.com/jquery-2.1.4.min.js"></script>
+
+<!-- Bootstrap -->
+<script src="//maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js"></script>
+
+<!-- Gallery -->
+<script src="//cdnjs.cloudflare.com/ajax/libs/featherlight/1.3.5/featherlight.min.js" type="text/javascript" charset="utf-8"></script>
+
+<!-- Disqus Comments -->
+
+
+
+</body>
+
+</html>
